@@ -1,7 +1,7 @@
 package main
 
 import (
-	"gobasic/model"
+	"gobasic/db"
 	"gobasic/web"
 	"log"
 	"net/http"
@@ -9,10 +9,10 @@ import (
 
 func main() {
 
-	if err := model.InitializeDB(); err != nil {
+	if err := db.InitializeDB(); err != nil {
 		log.Fatal("Error initializing database:", err)
 	}
-	defer model.GetDB().Close()
+	defer db.GetDB().Close()
 
 	web.Start_Server()
 	log.Fatal(http.ListenAndServe(":8080", nil))

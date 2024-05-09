@@ -1,13 +1,10 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
-	"fmt"
+	"gobasic/db"
 	"gobasic/web/message"
 	"net/http"
-
-	_ "github.com/lib/pq"
 )
 
 type User struct {
@@ -15,16 +12,6 @@ type User struct {
 	Name     string `db:"name" json:"name"`
 	Password string `db:"password" json:"password"`
 }
-
-const (
-	host     = "localhost"
-	port     = 5432
-	userx    = "root"
-	password = "admin"
-	dbname   = "root"
-)
-
-var users []User
 
 func Create(w http.ResponseWriter, r *http.Request) {
 
@@ -34,39 +21,27 @@ func Create(w http.ResponseWriter, r *http.Request) {
 		err := json.NewDecoder(r.Body).Decode(&new_user)
 
 		if err == nil {
-			users = append(users, new_user)
-			id := new_user.ID
-			name := new_user.Name
-			pass := new_user.Password
 
-			psql := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, userx, password, dbname)
+			err = db.InsertUser(db.User(new_user))
+			if err != nil {
 
-			DB, err1 := sql.Open("postgres", psql)
+				message.Send_Json(w, http.StatusPreconditionFailed, err)
+				return
+			} else {
 
-			CheckError(err1)
+				message.Send_Json(w, http.StatusCreated, "User created successfully")
+				return
+			}
+		} else {
 
-			defer DB.Close()
-
-			insertStmt := `INSERT INTO employee(employeeid, name, password) VALUES($1, $2, $3)`
-
-			_, err2 := DB.Exec(insertStmt, id, name, pass)
-
-			CheckError(err2)
-
-			fmt.Fprintf(w, "Register Successfuly: %s", new_user.Name)
+			message.Send_Error(w, http.StatusInternalServerError, "Error in json message", "")
 			return
 		}
-		message.Send_Error(w, http.StatusInternalServerError, "Error in json message", "")
 
+	} else {
+
+		message.Send_Error(w, http.StatusMethodNotAllowed, "Method not allowed", "")
 		return
-	}
-	message.Send_Error(w, http.StatusMethodNotAllowed, "Method not allowed", "")
-}
-
-func CheckError(err error) {
-
-	if err != nil {
-		panic(err)
 	}
 
 }

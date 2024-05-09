@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
-	"gobasic/model"
+	"gobasic/db"
+	"gobasic/web/message"
 	"net/http"
 )
 
@@ -19,17 +19,15 @@ func Update(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		db := model.GetDB()
-		query := `UPDATE employee SET name = $1, password = $2 WHERE id = $3`
-		_, err = db.Exec(query, update_user.Name, update_user.Password, update_user.ID)
-		if err != nil {
-			fmt.Println("Error updating record:", err)
+		status, value := db.UpdateUser(db.User(update_user))
+
+		if !status {
+			message.Send_Json(w, http.StatusPreconditionFailed, value)
+			return
+		} else {
+			message.Send_Json(w, http.StatusAccepted, value)
 			return
 		}
-
-		fmt.Println("Record updated successfully")
-
-		return
 
 	}
 }
