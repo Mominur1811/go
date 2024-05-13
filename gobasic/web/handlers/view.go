@@ -1,8 +1,7 @@
 package handlers
 
 import (
-	"fmt"
-	"gobasic/model"
+	"gobasic/db"
 	"gobasic/web/message"
 	"net/http"
 
@@ -11,21 +10,12 @@ import (
 
 func View(w http.ResponseWriter, r *http.Request) {
 
-	if r.Method == http.MethodGet {
+	employees, err := db.ViewTable()
 
-		db := model.GetDB()
-
-		// Retrieve data from the database
-		var employees []User
-		err := db.Select(&employees, "SELECT id, name, password FROM employee")
-		if err != nil {
-			fmt.Println("Error retrieving data from database:", err)
-			return
-		}
-
-		message.SendData(w, employees)
-
+	if err != nil {
+		message.SendError(w, http.StatusExpectationFailed, err.Error(), "")
 		return
 	}
-	http.Error(w, "Method not allowed ", http.StatusMethodNotAllowed)
+	message.SendData(w, employees)
+
 }

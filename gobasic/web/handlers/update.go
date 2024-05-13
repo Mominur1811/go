@@ -1,35 +1,32 @@
 package handlers
 
 import (
-	"encoding/json"
-	"fmt"
-	"gobasic/model"
+	"gobasic/db"
+	"gobasic/web/json_object"
+	"gobasic/web/message"
 	"net/http"
 )
 
 func Update(w http.ResponseWriter, r *http.Request) {
 
-	if r.Method == http.MethodPut {
-		var update_user User
-		err := json.NewDecoder(r.Body).Decode(&update_user)
+	var updateUser db.User
+	if err := json_object.JsonDecoding(r, &updateUser); err != nil {
 
-		if err != nil {
-
-			http.Error(w, "Error user to update", http.StatusBadRequest)
-			return
-		}
-
-		db := model.GetDB()
-		query := `UPDATE employee SET name = $1, password = $2 WHERE id = $3`
-		_, err = db.Exec(query, update_user.Name, update_user.Password, update_user.ID)
-		if err != nil {
-			fmt.Println("Error updating record:", err)
-			return
-		}
-
-		fmt.Println("Record updated successfully")
-
+		message.SendError(w, http.StatusBadRequest, "Failed to load json", "")
 		return
-
 	}
+
+	// Checking if the user exist or not before deleting
+	if value := db.CheckExistenseOfUser(updateUser.Id); value != nil {
+		message.SendError(w, http.StatusBadRequest, value.Error(), "")
+		return
+	}
+
+	//Calling delete function
+	if value := db.UpdateUser(updateUser); value != nil {
+		message.SendError(w, http.StatusBadRequest, value.Error(), "")
+		return
+	}
+	message.SendJson(w, http.StatusAccepted, updateUser)
+
 }
