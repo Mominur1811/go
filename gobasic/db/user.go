@@ -1,15 +1,16 @@
 package db
 
 type User struct {
-	ID       int    `db:"id" 		json:"id"`
+	Id       int    `db:"id" 		json:"id"`
 	Name     string `db:"name" 		json:"name"`
 	Password string `db:"password" 	json:"password"`
 }
 
-type UserData struct {
+type UserId struct {
 	ID int `db:"id" json:"id"`
 }
 
+// Insertion
 func InsertUser(new_user User) error {
 
 	db := GetDB()
@@ -18,61 +19,36 @@ func InsertUser(new_user User) error {
 
 }
 
-func DeleteUser(delete_user UserData) (bool, string) {
+// Deletion by taking key
+func DeleteUser(delete_user UserId) error {
+
 	db := GetDB()
-	check, err := CheckExistenseOfUser(delete_user)
-	if check {
-		_, err := db.NamedExec("DELETE FROM employee WHERE id=:id", delete_user)
-		if err != nil {
-			return false, "Error deleting Data"
-		}
-		return true, "Deleted Users data"
-	} else {
-		if err != nil {
-			return false, "Error in connecting to Database"
-		}
-		return false, "table has no records regarding the User ID"
-	}
+	_, err := db.NamedExec("DELETE FROM employee WHERE id=:id", delete_user)
+	return err
+}
+
+// Update whole row
+func UpdateUser(updateUser User) error {
+
+	db := GetDB()
+	_, err := db.NamedExec("UPDATE employee SET name=:name, password=:password WHERE id=:id", updateUser)
+	return err
 
 }
 
-func UpdateUser(updateUser User) (bool, string) {
+// Check if user exist or not
+func CheckExistenseOfUser(find_user int) error {
 
 	db := GetDB()
-	var upUser UserData
-	upUser.ID = updateUser.ID
-	check, err := CheckExistenseOfUser(upUser)
-	if check {
-		_, err := db.NamedExec("UPDATE employee SET name=:name, password=:password WHERE id=:id", updateUser)
-		if err != nil {
-			return false, "Error Updating Data"
-		}
-		return true, "Updated User data"
-	} else {
-		if err != nil {
-			return false, "Error in connecting to Database"
-		}
-		return false, "Table has no records regarding the User ID"
-	}
+	var name string
+	err := db.Get(&name, "SELECT name FROM employee WHERE id=$1", find_user)
+	return err
 }
 
+// view atmost 100 rows from the table
 func ViewTable() (interface{}, error) {
 	db := GetDB()
 	var employees []User
-	err := db.Select(&employees, "SELECT id, name, password FROM employee")
+	err := db.Select(&employees, "SELECT id, name, crypt(password, gen_salt('md5')) AS password FROM employee LIMIT 100")
 	return employees, err
-}
-
-func CheckExistenseOfUser(find_user UserData) (bool, error) {
-	db := GetDB()
-	var exists bool
-	err := db.Get(&exists, "SELECT EXISTS (SELECT 1 FROM employee WHERE id=$1)", find_user.ID)
-	if err != nil {
-		return false, err
-	}
-
-	if !exists {
-		return false, nil
-	}
-	return true, nil
 }

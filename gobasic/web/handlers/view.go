@@ -10,21 +10,12 @@ import (
 
 func View(w http.ResponseWriter, r *http.Request) {
 
-	if r.Method == http.MethodGet {
+	employees, err := db.ViewTable()
 
-		employees, err := db.ViewTable()
-
-		if err != nil {
-			message.Send_Json(w, http.StatusExpectationFailed, err)
-			return
-		} else {
-			message.SendData(w, employees)
-			return
-		}
-
-	} else {
-		http.Error(w, "Method not allowed ", http.StatusMethodNotAllowed)
+	if err != nil {
+		message.SendError(w, http.StatusExpectationFailed, err.Error(), "")
 		return
 	}
+	message.SendData(w, employees)
 
 }

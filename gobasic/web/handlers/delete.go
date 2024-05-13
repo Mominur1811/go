@@ -1,39 +1,34 @@
 package handlers
 
 import (
-	"encoding/json"
+	"fmt"
 
 	"gobasic/db"
+	"gobasic/web/json_object"
 	"gobasic/web/message"
 	"net/http"
 )
 
-type UserData struct {
-	ID int `db:"id" json:"id"`
-}
-
 func Delete(w http.ResponseWriter, r *http.Request) {
 
-	if r.Method == http.MethodDelete {
+	var deleteUserId db.UserId
+	if err := json_object.JsonDecoding(r, &deleteUserId); err != nil {
 
-		var delete_user UserData
-		err := json.NewDecoder(r.Body).Decode(&delete_user)
-
-		if err != nil {
-
-			message.Send_Error(w, http.StatusBadRequest, "Failed to load json", "")
-			return
-		}
-
-		status, value := db.DeleteUser(db.UserData(delete_user))
-		if !status {
-			message.Send_Json(w, http.StatusPreconditionFailed, value)
-			return
-		} else {
-			message.Send_Json(w, http.StatusAccepted, value)
-			return
-		}
-
+		message.SendError(w, http.StatusBadRequest, err.Error(), "")
+		return
 	}
+
+	// Checking if the user exist or not before deleting
+	if value := db.CheckExistenseOfUser(deleteUserId.ID); value != nil {
+		message.SendError(w, http.StatusBadRequest, value.Error(), "")
+		return
+	}
+
+	//Calling delete function
+	if value := db.DeleteUser(deleteUserId); value != nil {
+		message.SendError(w, http.StatusBadRequest, value.Error(), "")
+		return
+	}
+	message.SendJson(w, http.StatusAccepted, fmt.Sprint(deleteUserId)+" deleted")
 
 }

@@ -5,7 +5,7 @@ import (
 )
 
 func SendData(w http.ResponseWriter, data interface{}) {
-	Send_Json(w, http.StatusOK, map[string]interface{}{
+	SendJson(w, http.StatusOK, map[string]interface{}{
 		"status":  true,
 		"message": "Success",
 		"data":    data,
