@@ -12,9 +12,11 @@ func InsertInTable(info Product) error {
 	return err
 }
 
-func PaginationFilterSearch(queryString string, product *[]Product) error {
+// Get data after applying pagination search and filtering
+func QueryPaginationFilter(queryString string) ([]Product, error) {
 
 	db := GetDB()
-	err := db.Select(product, queryString)
-	return err
+	var product []Product
+	err := db.Select(&product, queryString)
+	return product, err
 }
