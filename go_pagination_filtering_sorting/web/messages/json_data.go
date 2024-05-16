@@ -2,10 +2,10 @@ package messages
 
 import "net/http"
 
-func SendData(w http.ResponseWriter, data interface{}) {
+func SendData(w http.ResponseWriter, info interface{}, data interface{}) {
 	SendJson(w, http.StatusOK, map[string]interface{}{
 		"status":  true,
-		"message": "Success",
+		"message": info,
 		"data":    data,
 	})
 }

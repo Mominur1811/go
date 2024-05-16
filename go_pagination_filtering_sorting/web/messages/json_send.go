@@ -15,6 +15,7 @@ func SendJson(w http.ResponseWriter, status int, data interface{}) {
 		SendError(w, status, message, data)
 		return
 	}
+
 	w.WriteHeader(status)
 	w.Write(str)
 
