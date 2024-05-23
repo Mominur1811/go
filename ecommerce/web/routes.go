@@ -30,15 +30,16 @@ func InitRoutes(mux *http.ServeMux, manager *middlewire.Manager) {
 
 	mux.Handle(
 		"POST /users/addorder",
-		manager.Authenticate(
+		manager.With(
 			http.HandlerFunc(handlers.NewOrder),
 		),
 	)
 
 	mux.Handle(
+
 		"GET /users/search",
-		manager.Authenticate(
-			http.HandlerFunc(handlers.SearchProduct),
+		manager.With(
+			http.HandlerFunc(handlers.SearchProduct), []middlewire.Middleware{middlewire.Authenticate}...,
 		),
 	)
 

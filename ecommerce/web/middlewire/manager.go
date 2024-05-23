@@ -1,8 +1,6 @@
 package middlewire
 
 import (
-	auth "ecommerce/Auth"
-	"ecommerce/web/messages"
 	"net/http"
 )
 
@@ -36,31 +34,4 @@ func (m *Manager) With(handler http.Handler, middlewares ...Middleware) http.Han
 	}
 
 	return h
-}
-
-func (m *Manager) Authenticate(handler http.Handler, middlewares ...Middleware) http.Handler {
-	var h http.Handler
-	h = handler
-
-	for _, m := range middlewares {
-		h = m(h)
-	}
-
-	for _, m := range m.globalMiddlewares {
-		h = m(h)
-	}
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Extract JWT token from request header
-		token := r.Header.Get("Authorization")
-
-		// Verify the JWT token
-		if err := auth.CheckAuthorization(token); err != nil {
-			messages.SendError(w, http.StatusUnauthorized, err.Error(), "")
-			return
-		}
-
-		// If token is valid, call the original handler
-		h.ServeHTTP(w, r)
-	})
 }
