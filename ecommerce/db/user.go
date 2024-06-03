@@ -2,6 +2,7 @@ package db
 
 import (
 	"ecommerce/logger"
+	"fmt"
 	"log/slog"
 
 	sq "github.com/Masterminds/squirrel"
@@ -101,21 +102,28 @@ func (r *UserRegisterRepo) InsertNewUser(newUser *User) (*User, error) {
 
 }
 
-func (r *UserRepo) FindUser(userLogin *Login) error {
+func (r *UserRepo) FindUser(userLogin *Login) (string, error) {
 	db := GetReadDB() // Assuming GetReadDB() returns a *sql.DB
 
 	// Build the query using squirrel
-	query := GetQueryBuilder().Select("username").From("user").
+	query := GetQueryBuilder().Select("email").From(`"user"`).
 		Where(sq.Eq{"username": userLogin.Username, "password": userLogin.Password})
 
 	// Get the generated SQL and arguments from the squirrel query builder
 	sql, args, err := query.ToSql()
+	fmt.Println(sql)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Execute the query
-	var username string
-	err = db.Get(&username, sql, args...)
+	var email string
+	err = db.Get(&email, sql, args...)
+	return email, err
+}
+
+func (r *UserRepo) InsertOtp(email string, otp string) error {
+
+	_, err := GetReadDB().Exec("INSERT INTO otp_check (email, otp) VALUES ('" + email + "', '" + otp + "')")
 	return err
 }

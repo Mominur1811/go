@@ -16,7 +16,7 @@ func CreateTable() {
 	if _, err := db.Exec(createUserTable); err != nil {
 		panic(err)
 	}
-	fmt.Println("User Table created successfully")
+	//fmt.Println("User Table created successfully")
 	createProductTable := `
 	CREATE TABLE IF NOT EXISTS product (
 		product_id          SERIAL PRIMARY KEY,
@@ -31,7 +31,7 @@ func CreateTable() {
 		panic(err)
 	}
 
-	fmt.Println("Product Table created successfully")
+	//fmt.Println("Product Table created successfully")
 
 	createOrderTable := `
 	CREATE TABLE IF NOT EXISTS "order" (
@@ -50,6 +50,19 @@ func CreateTable() {
 		panic(err)
 	}
 
-	fmt.Println("Order Table created successfully")
+	//fmt.Println("Order Table created successfully")
+
+	createOtpTable := `
+	CREATE TABLE IF NOT EXISTS otp_check (
+		email TEXT PRIMARY KEY,
+		otp TEXT,
+		create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);
+	`
+	if _, err := db.Exec(createOtpTable); err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Otp Table created successfully")
 
 }
