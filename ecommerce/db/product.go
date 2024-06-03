@@ -1,5 +1,12 @@
 package db
 
+import (
+	"ecommerce/logger"
+	"log/slog"
+
+	sq "github.com/Masterminds/squirrel"
+)
+
 // Product struct represents the product table
 type Product struct {
 	ProductName     string  `db:"product_name"       validate:"required,min=4,max=12"              json:"product_name"`
@@ -24,28 +31,174 @@ type CountResult struct {
 	Err   error
 }
 
-func AddProduct(newProduct Product) error {
-
-	db := GetDB()
-	_, err := db.Exec(`INSERT INTO product (product_name, product_category, product_price, product_quantity)
-	                  VALUES ($1, $2, $3, $4)`,
-		newProduct.ProductName, newProduct.ProductCategory, newProduct.ProductPrice, newProduct.ProductQuantity)
-
-	return err
+type ProductRepo struct {
+	productTableName string
 }
 
-func GetProductList(str string) ([]Product, error) {
+var productRepo *ProductRepo
 
-	db := GetDB()
-	var productList []Product
-	err := db.Select(&productList, str)
-	return productList, err
+func InitProductRepo() {
+	productRepo = &ProductRepo{productTableName: "product"}
 }
 
-func GetSearchCount(str string, countChan chan CountResult) {
-	db := GetDB()
-	var count int
-	err := db.Get(&count, str)
-	result := CountResult{Count: count, Err: err}
-	countChan <- result
+func GetProductRepo() *ProductRepo {
+	return productRepo
+}
+
+func (r *ProductRepo) GetSearchResultProduct(productParam ProductQueryParam) ([]*Product, error) {
+
+	query := GetQueryBuilder().
+		Select("product_name, product_category, product_price, product_quantity").
+		From(r.productTableName)
+
+	if productParam.ProductName != "" {
+		query = query.Where(sq.Eq{"product_name": productParam.ProductName})
+	}
+
+	if productParam.ProductCategory != "" {
+		query = query.Where(sq.Eq{"product_category": productParam.ProductCategory})
+	}
+
+	if productParam.ProductPrice > 0 {
+		query = query.Where(sq.GtOrEq{"product_price": productParam.ProductPrice})
+	}
+
+	if productParam.SortType != "" {
+		query = query.OrderBy("product_price " + productParam.SortType)
+	}
+
+	offset := ((productParam.Page) - 1) * productParam.Limit
+	query = query.Limit(uint64(productParam.Limit)).Offset(uint64(offset))
+
+	qry, args, err := query.ToSql()
+	if err != nil {
+		slog.Error(
+			"Failed to create product result query",
+			logger.Extra(map[string]any{
+				"error": err.Error(),
+				"query": qry,
+				"args":  args,
+			}),
+		)
+		return nil, err
+	}
+
+	productList := []*Product{}
+	err = GetReadDB().Select(&productList, qry, args...)
+	if err != nil {
+		slog.Error(
+			"Failed to create product result query",
+			logger.Extra(map[string]any{
+				"error": err.Error(),
+				"query": qry,
+				"args":  args,
+			}),
+		)
+		return nil, err
+	}
+
+	return productList, nil
+}
+
+func (r *ProductRepo) GetCountProduct(productParam ProductQueryParam, coutChan chan CountResult) {
+
+	query := GetQueryBuilder().
+		Select("Count(*)").
+		From(r.productTableName)
+
+	if productParam.ProductName != "" {
+		query = query.Where(sq.Eq{"product_name": productParam.ProductName})
+	}
+
+	if productParam.ProductCategory != "" {
+		query = query.Where(sq.Eq{"product_category": productParam.ProductCategory})
+	}
+
+	if productParam.ProductPrice > 0 {
+		query = query.Where(sq.GtOrEq{"product_price": productParam.ProductPrice})
+	}
+
+	qry, args, err := query.ToSql()
+	if err != nil {
+		slog.Error(
+			"Failed to create product count query",
+			logger.Extra(map[string]any{
+				"error": err.Error(),
+				"query": qry,
+				"args":  args,
+			}),
+		)
+
+	}
+
+	var countProduct int
+	err = GetReadDB().Get(&countProduct, qry, args...)
+	if err != nil {
+		slog.Error(
+			"Failed product count query",
+			logger.Extra(map[string]any{
+				"error": err.Error(),
+				"query": qry,
+				"args":  args,
+			}),
+		)
+	}
+
+	coutChan <- CountResult{Count: countProduct, Err: err}
+}
+
+func (r *ProductRepo) AddProduct(product Product) (*Product, error) {
+
+	column := map[string]interface{}{
+		"product_name":     product.ProductName,
+		"product_category": product.ProductCategory,
+		"product_price":    product.ProductPrice,
+		"product_quantity": product.ProductQuantity,
+	}
+	var columns []string
+	var values []any
+	for columnName, columnValue := range column {
+
+		columns = append(columns, columnName)
+		values = append(values, columnValue)
+
+	}
+	qry, args, err := GetQueryBuilder().
+		Insert(r.productTableName).
+		Columns(columns...).
+		Suffix(`
+			RETURNING 
+			product_name,
+			product_category,
+			product_price,
+			product_quantity
+		`).
+		Values(values...).
+		ToSql()
+	if err != nil {
+		slog.Error(
+			"Failed to create product insert query",
+			logger.Extra(map[string]any{
+				"error": err.Error(),
+				"query": qry,
+				"args":  args,
+			}),
+		)
+		return nil, err
+	}
+	// Execute the SQL query and get the result
+	var insertedProduct Product
+	err = GetReadDB().QueryRow(qry, args...).Scan(&insertedProduct.ProductName, &insertedProduct.ProductCategory, &insertedProduct.ProductPrice, &insertedProduct.ProductQuantity)
+	if err != nil {
+		slog.Error(
+			"Failed to execute product insert query",
+			logger.Extra(map[string]interface{}{
+				"error": err.Error(),
+				"query": qry,
+				"args":  args,
+			}),
+		)
+	}
+
+	return &insertedProduct, nil
 }

@@ -12,7 +12,7 @@ func CreateTable() {
 	);
 	`
 
-	db := GetDB()
+	db := GetReadDB()
 	if _, err := db.Exec(createUserTable); err != nil {
 		panic(err)
 	}

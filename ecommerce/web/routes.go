@@ -39,7 +39,15 @@ func InitRoutes(mux *http.ServeMux, manager *middlewire.Manager) {
 
 		"GET /users/search",
 		manager.With(
-			http.HandlerFunc(handlers.SearchProduct), []middlewire.Middleware{middlewire.Authenticate}...,
+			http.HandlerFunc(handlers.SearchProduct),
+		),
+	)
+
+	mux.Handle(
+
+		"GET /users/newtoken",
+		manager.With(
+			http.HandlerFunc(handlers.RefreshAccessToken), middlewire.AuthenticateRefreshToken,
 		),
 	)
 

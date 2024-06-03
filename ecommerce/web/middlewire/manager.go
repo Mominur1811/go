@@ -24,7 +24,6 @@ func (m Manager) Use(middlewares ...Middleware) Manager {
 func (m *Manager) With(handler http.Handler, middlewares ...Middleware) http.Handler {
 	var h http.Handler
 	h = handler
-
 	for _, m := range middlewares {
 		h = m(h)
 	}

@@ -1,6 +1,10 @@
 package db
 
-import "time"
+import (
+	"ecommerce/logger"
+	"log/slog"
+	"time"
+)
 
 // Order struct represents the order table
 type Order struct {
@@ -11,11 +15,79 @@ type Order struct {
 	TotalPay      float64   `db:"total_pay"       json:"total_pay" `
 }
 
-func AddOrder(newOrder Order) error {
+type OrderRepo struct {
+	orderTableName string
+}
 
-	db := GetDB()
-	_, err := db.Exec(`INSERT INTO "order" (username, product_id, order_date, order_quantity, total_pay) 
-                      VALUES ($1, $2, $3, $4, $5)`,
-		newOrder.Username, newOrder.ProductID, newOrder.OrderDate, newOrder.OrderQuantity, newOrder.TotalPay)
-	return err
+var orderRepo *OrderRepo
+
+func InitOrderRepo() {
+
+	orderRepo = &OrderRepo{orderTableName: `"order"`}
+}
+
+func GetOrderRepo() *OrderRepo {
+	return orderRepo
+}
+
+func (r *OrderRepo) InsertNewOrder(newOrder *Order) (*Order, error) {
+	db := GetWriteDB() // Assuming GetWriteDB() returns a *sql.DB for writing operations
+
+	// Define the columns and values to be inserted
+	column := map[string]interface{}{
+		"username":       newOrder.Username,
+		"product_id":     newOrder.ProductID,
+		"order_date":     newOrder.OrderDate,
+		"order_quantity": newOrder.OrderQuantity,
+		"total_pay":      newOrder.TotalPay,
+	}
+
+	var columns []string
+	var values []any
+	for columnName, columnValue := range column {
+
+		columns = append(columns, columnName)
+		values = append(values, columnValue)
+
+	}
+
+	// Build the insert query using squirrel
+	qry, args, err := GetQueryBuilder().
+		Insert(r.orderTableName).
+		Columns(columns...).
+		Suffix(`
+			RETURNING 
+			product_id,
+			order_date,
+			order_quantity,
+		    total_pay
+		`).
+		Values(values...).
+		ToSql()
+	if err != nil {
+		slog.Error(
+			"Failed to create order insert query",
+			logger.Extra(map[string]interface{}{"error": err.Error()}),
+		)
+		return nil, err
+	}
+
+	// Execute the SQL query and get the result
+	var insertedOrder Order
+	err = db.QueryRow(qry, args...).Scan(
+		&insertedOrder.Username,
+		&insertedOrder.ProductID,
+		&insertedOrder.OrderDate,
+		&insertedOrder.OrderQuantity,
+		&insertedOrder.TotalPay,
+	)
+	if err != nil {
+		slog.Error(
+			"Failed to execute order insert query",
+			logger.Extra(map[string]interface{}{"error": err.Error()}),
+		)
+		return nil, err
+	}
+
+	return &insertedOrder, nil
 }

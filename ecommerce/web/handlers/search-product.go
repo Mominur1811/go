@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"ecommerce/db"
-	"ecommerce/web/messages"
+	"ecommerce/logger"
+	"ecommerce/web/utils"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -10,32 +12,34 @@ import (
 
 func SearchProduct(w http.ResponseWriter, r *http.Request) {
 
-	queryParams := r.URL.Query()
-	productParams, err := GetQueryParams(queryParams)
+	productParams, err := GetQueryParams(r.URL.Query())
 	if err != nil {
-		messages.SendError(w, http.StatusPreconditionFailed, err.Error(), "")
-		return
-	}
-
-	SearchQuery, searchResultCount := db.BuildSearchQuery(productParams)
-
-	productList, err := db.GetProductList(SearchQuery)
-	if err != nil {
-		messages.SendError(w, http.StatusExpectationFailed, err.Error(), "")
+		slog.Error("Failed to load query param", logger.Extra(map[string]any{
+			"error":   err.Error(),
+			"payload": productParams,
+		}))
+		utils.SendError(w, http.StatusPreconditionFailed, err.Error())
 		return
 	}
 
 	//Go routine to find count of search
 	countChan := make(chan db.CountResult)
-	go db.GetSearchCount(searchResultCount, countChan)
+	go db.GetProductRepo().GetCountProduct(productParams, countChan)
+
+	productList, err := db.GetProductRepo().GetSearchResultProduct(productParams)
+	if err != nil {
+		utils.SendError(w, http.StatusExpectationFailed, err.Error())
+		return
+	}
+
 	result := <-countChan
 	if result.Err != nil {
-		messages.SendError(w, http.StatusExpectationFailed, result.Err.Error(), "")
+		utils.SendError(w, http.StatusExpectationFailed, result.Err.Error())
 		return
 	}
 
 	//Send Product and Info as Json
-	messages.SendData(w, map[string]interface{}{
+	utils.SendData(w, map[string]interface{}{
 		"Total Result":  result.Count,
 		"Page No":       productParams.Page,
 		"Total Page":    (result.Count + productParams.Limit - 1) / productParams.Limit,

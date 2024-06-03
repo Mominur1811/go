@@ -1,21 +1,29 @@
 package web
 
 import (
+	"ecommerce/config"
 	"ecommerce/web/middlewire"
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 )
 
-func StartServer() {
+func StartServer(wg *sync.WaitGroup) {
 	mux := http.NewServeMux()
 
 	manager := middlewire.NewManager()
 	InitRoutes(mux, manager)
+	handler := middlewire.EnableCors(mux)
 
-	fmt.Println("Server Started")
-	err := http.ListenAndServe(":3000", mux)
-	if err != nil {
-		log.Fatal(err)
-	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fmt.Println("Server Started")
+		addr := fmt.Sprintf(":%d", config.GetConfig().HttpPort)
+		if err := http.ListenAndServe(addr, handler); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
 }

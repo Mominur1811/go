@@ -3,6 +3,7 @@ package auth
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"ecommerce/config"
 	"ecommerce/db"
 	"encoding/base64"
 	"encoding/json"
@@ -10,10 +11,10 @@ import (
 	"time"
 )
 
-func GetJwtToken(userLogin db.Login) (string, error) {
+func GetAccessToken(userLogin db.Login, duration int) (string, error) {
 
 	jwtData := map[string]interface{}{
-		"expiration_time": time.Now().Add(time.Minute * 1).Unix(),
+		"expiration_time": time.Now().Add(time.Minute * time.Duration(duration)).Unix(),
 		"username":        userLogin.Username,
 		"password":        userLogin.Password,
 	}
@@ -36,8 +37,8 @@ func GetJwtToken(userLogin db.Login) (string, error) {
 
 func GenerateSignature(payload []byte) string {
 
-	secretKey := []byte("your_secret_key")
-	hash := hmac.New(sha256.New, secretKey)
+	secretKey := config.GetConfig().JwtSecretKey
+	hash := hmac.New(sha256.New, []byte(secretKey))
 	hash.Write(payload)
 	signature := hash.Sum(nil)
 

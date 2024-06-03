@@ -1,63 +1,34 @@
 package config
 
-import (
-	"bufio"
-	"fmt"
-	"os"
-	"strings"
-)
-
-type DBConfig struct {
-	Host     string
-	Port     string
-	DBName   string
-	SSLMode  string
-	User     string
-	Password string
+type DB struct {
+	Host      string `json:"host"`
+	Port      string `json:"port"`
+	DbName    string `json:"dbName"`
+	SSLMode   string `json:"sslMode"`
+	User      string `json:"user"`
+	Password  string `json:"password"`
+	SecretKey string `json:"secret_key"`
 }
 
-func ReadDBConfigFromFile(filename string) (DBConfig, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return DBConfig{}, err
-	}
-	defer file.Close()
+type DBConfig struct {
+	Read  DB `json:"read"`
+	Write DB `json:"write"`
+}
+type Mode string
+type Config struct {
+	Mode         Mode     `json:"mode"`
+	ServiceName  string   `json:"service_name"`
+	HttpPort     int      `json:"http_port"`
+	JwtSecretKey string   `json:"jwt_secrect_key"`
+	Db           DBConfig `json:"db"`
+}
 
-	config := DBConfig{}
+var config *Config
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		fields := strings.Split(line, "=")
-		if len(fields) != 2 {
-			continue
-		}
-		key := strings.TrimSpace(fields[0])
-		value := strings.TrimSpace(fields[1])
+func init() {
+	config = &Config{}
+}
 
-		fmt.Println(key, value)
-
-		switch key {
-		case "host":
-			config.Host = value
-		case "port":
-			config.Port = value
-		case "dbName":
-			config.DBName = value
-		case "sslMode":
-			config.SSLMode = value
-		case "user":
-			config.User = value
-		case "password":
-			config.Password = value
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return DBConfig{}, err
-	}
-
-	fmt.Println(config)
-
-	return config, nil
+func GetConfig() Config {
+	return *config
 }
